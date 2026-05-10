@@ -1,0 +1,21 @@
+#!/bin/bash
+
+PC_IP="192.168.0.xxx"        # your PC
+WG_IP="192.168.0.xxx"        # WireGuard LXC
+
+# Port 81 - Admin panel, PC only
+iptables -A INPUT -s $PC_IP -p tcp --dport 81 -j ACCEPT
+iptables -A INPUT -p tcp --dport 81 -j DROP
+
+# Port 80/443 - Proxy traffic, allow WireGuard and LAN
+iptables -A INPUT -s $WG_IP -p tcp --dport 80 -j ACCEPT
+iptables -A INPUT -s $WG_IP -p tcp --dport 443 -j ACCEPT
+iptables -A INPUT -s 192.168.0.0/24 -p tcp --dport 80 -j ACCEPT
+iptables -A INPUT -s 192.168.0.0/24 -p tcp --dport 443 -j ACCEPT
+iptables -A INPUT -p tcp --dport 80 -j DROP
+iptables -A INPUT -p tcp --dport 443 -j DROP
+
+netfilter-persistent save
+
+echo "Done. Current rules:"
+iptables -L INPUT -n -v --line-numbers
