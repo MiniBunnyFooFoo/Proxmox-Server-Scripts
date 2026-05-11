@@ -5,7 +5,8 @@ Wants=network-online.target
 
 [Service]
 Type=oneshot
-ExecStart=/bin/bash -c '/bin/ip route add 10.0.0.0/24 via 192.168.0.xxx || true'
+ExecStart=/bin/bash -c 'until ip route add 10.0.0.0/24 via 192.168.0.129 2>/dev/null; do sleep 2; done'
+TimeoutStartSec=60
 RemainAfterExit=yes
 
 [Install]
