@@ -1,7 +1,12 @@
 #!/bin/bash
 
+#! Don't forget to chmod 600 + chown root:root the file
+# mkdir the cloudflare directory first + nano the file
+# Credentials = zone id, api token and A record name
 source /etc/cloudflare/credentials.conf
 
+# Script should be in /usr/local/bin
+# schedule a cronjob for it
 CURRENT_IP=$(curl -s https://api.ipify.org)
 
 # Validate IP before proceeding
@@ -33,7 +38,7 @@ fi
 RESPONSE=$(curl -s -X PUT \
     "https://api.cloudflare.com/client/v4/zones/${CF_ZONE_ID}/dns_records/${RECORD_ID}" \
     -H "Authorization: Bearer ${CF_TOKEN}" \
-    -H "Content-Type: application/json" \
+    -H "Content-Type: application/json" \ 
     --data "{\"type\":\"A\",\"name\":\"${CF_RECORD_NAME}\",\"content\":\"${CURRENT_IP}\",\"ttl\":60,\"proxied\":false}")
 
 if echo "$RESPONSE" | grep -q '"success":true'; then

@@ -1,24 +1,27 @@
-iptables -F INPUT
+#!/bin/bash
+# restrict-access.sh — deploy to /usr/local/bin/restrict-access.sh on the NPM LXC
+set -e
 
-# Allow established/related
-iptables -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+#! Don't forget to chmod 600 + chown root:root the file
+# mkdir the directory first + nano the file
+source /etc/proxmox/container_ip.conf
 
-# Allow loopback
-iptables -A INPUT -i lo -j ACCEPT
+# Port 81 (admin UI): PC + admin VPN peer only
+iptables -C INPUT -p tcp --dport 81 -s "$PC_IP" -j ACCEPT 2>/dev/null || \
+  iptables -A INPUT -p tcp --dport 81 -s "$PC_IP" -j ACCEPT
+iptables -C INPUT -p tcp --dport 81 -s "$ADMIN_VPN_IP" -j ACCEPT 2>/dev/null || \
+  iptables -A INPUT -p tcp --dport 81 -s "$ADMIN_VPN_IP" -j ACCEPT
+iptables -C INPUT -p tcp --dport 81 -j DROP 2>/dev/null || \
+  iptables -A INPUT -p tcp --dport 81 -j DROP
 
-# Port 81 - PC by both LAN and VPN IP
-iptables -A INPUT -s 192.168.0.xxx -p tcp --dport 81 -j ACCEPT # PC LAN IP
-iptables -A INPUT -s 192.168.0.xxx -p tcp --dport 81 -j ACCEPT # NPM LAN IP
-iptables -A INPUT -s 10.0.0.2 -p tcp --dport 81 -j ACCEPT
-iptables -A INPUT -p tcp --dport 81 -j DROP
-
-# Port 80/443 - LAN and WireGuard subnet
-iptables -A INPUT -s 192.168.0.0/24 -p tcp --dport 80 -j ACCEPT
-iptables -A INPUT -s 192.168.0.0/24 -p tcp --dport 443 -j ACCEPT
-iptables -A INPUT -s 10.0.0.0/24 -p tcp --dport 80 -j ACCEPT
-iptables -A INPUT -s 10.0.0.0/24 -p tcp --dport 443 -j ACCEPT
-iptables -A INPUT -p tcp --dport 80 -j DROP
-iptables -A INPUT -p tcp --dport 443 -j DROP
-
-netfilter-persistent save
-iptables -L INPUT -n -v --line-numbers
+# Ports 80/443 (proxied traffic): WireGuard peer subnet + LAN.
+# Per-service locking (e.g. the Pterodactyl Panel) happens in NPM's own
+# Access Lists per proxy host — see step 7 — not here.
+for PORT in 80 443; do
+  iptables -C INPUT -p tcp --dport "$PORT" -s "$LAN_SUBNET" -j ACCEPT 2>/dev/null || \
+    iptables -A INPUT -p tcp --dport "$PORT" -s "$LAN_SUBNET" -j ACCEPT
+  iptables -C INPUT -p tcp --dport "$PORT" -s "$WG_SUBNET" -j ACCEPT 2>/dev/null || \
+    iptables -A INPUT -p tcp --dport "$PORT" -s "$WG_SUBNET" -j ACCEPT
+  iptables -C INPUT -p tcp --dport "$PORT" -j DROP 2>/dev/null || \
+    iptables -A INPUT -p tcp --dport "$PORT" -j DROP
+done

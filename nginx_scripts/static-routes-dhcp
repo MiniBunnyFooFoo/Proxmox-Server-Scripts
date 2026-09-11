@@ -1,0 +1,7 @@
+#!/bin/bash
+source /etc/proxmox/container_ip.conf
+
+if [ "$reason" = "BOUND" ] || [ "$reason" = "RENEW" ] || [ "$reason" = "REBIND" ] || [ "$reason" = "REBOOT" ]; then
+    ip route show | grep -q "$WG_SUBNET" via "$WG_LXC_IP" || \
+        ip route add "$WG_SUBNET" via "$WG_LXC_IP"
+fi
